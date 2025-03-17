@@ -1,11 +1,8 @@
 const express = require("express");
-const fs = require("fs");
-const path = require("path");
 
 const app = express();
 app.use(express.json());
 const PORT = 3001;
-const dbPath = path.join(__dirname, "phonebook.json");
 
 let phonebook = [
   {
@@ -105,6 +102,12 @@ app.post("/api/persons", (request, response) => {
   phonebook = [...phonebook, person];
   response.json(person);
 });
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).json({ error: "No routes matching this request" });
+};
+
+app.use(unknownEndpoint);
 
 app.listen(PORT);
 console.log(`Server running on port ${PORT}`);
