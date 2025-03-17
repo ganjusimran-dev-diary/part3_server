@@ -3,6 +3,7 @@ const express = require("express");
 const app = express();
 app.use(express.json());
 const PORT = 3001;
+const morgan = require("morgan");
 
 let phonebook = [
   {
@@ -42,6 +43,23 @@ const generateId = () => {
   return `${newId}`;
 };
 
+const logCallback = (tokens, request, response) => {
+  return [
+    tokens.method(request, response),
+    tokens.url(request, response),
+    tokens.status(request, response),
+    tokens.res(request, response, "content-length"),
+    "-",
+    tokens["response-time"](request, response),
+    "ms",
+    tokens["req-body"](request, response),
+  ].join(" ");
+};
+
+const reqBodyCallback = (request, response) => {
+  return JSON.stringify(request?.body || {});
+};
+
 // GET ALL PEOPLE
 app.get("/api/persons", (request, response) => {
   response.json(phonebook);
@@ -74,6 +92,9 @@ app.delete("/api/persons/:id", (request, response) => {
   phonebook = phonebook?.filter((phone) => phone?.id !== id);
   response.status(204).end();
 });
+
+morgan.token("req-body", reqBodyCallback);
+app.use(morgan(logCallback));
 
 // POST NEW PERSON NUMBER
 app.post("/api/persons", (request, response) => {
