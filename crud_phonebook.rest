@@ -17,3 +17,13 @@ content-type: application/json
     "name": "Bruno",
     "number": "090-2634"
 }
+
+###
+PUT http://localhost:3001/api/persons/3 HTTP/1.1
+content-type: application/json
+
+{
+    "name": "Dan0 Abramov",
+    "number": "080-2634",
+    "id": 3
+}

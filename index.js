@@ -5,6 +5,7 @@ const cors = require("cors");
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use(express.static("dist"));
 
 const PORT = process.env.PORT || 3001;
 
@@ -96,6 +97,33 @@ app.delete("/api/persons/:id", (request, response) => {
   response.status(204).end();
 });
 
+app.put("/api/persons/:id", (request, response) => {
+  const body = request.body;
+  if (!body?.name || !body?.number) {
+    return response.status(400).json({
+      error: "The name or number is missing",
+    });
+  }
+  const id = request.params?.id || "";
+  const phoneEntry = phonebook?.find((phone) => phone?.id == id);
+  const person = {
+    name: body.name,
+    number: body.number,
+    id,
+  };
+
+  if (phoneEntry?.name != person.name) {
+    return response.status(400).json({
+      error: "The name should match existing name",
+    });
+  }
+  phonebook = phonebook?.map((phone) => {
+    if (phone?.id !== id) return phone;
+    return person;
+  });
+  response.json(person);
+});
+
 morgan.token("req-body", reqBodyCallback);
 app.use(morgan(logCallback));
 
@@ -116,6 +144,7 @@ app.post("/api/persons", (request, response) => {
   const isExistingPerson = phonebook?.find(
     (phone) => phone?.name == person?.name
   );
+
   if (isExistingPerson) {
     return response.status(400).json({
       error: "Name must be unique",
