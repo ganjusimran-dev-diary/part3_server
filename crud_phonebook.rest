@@ -4,26 +4,25 @@ GET http://localhost:3001/api/persons
 GET http://localhost:3001/info
 
 ### 
-GET http://localhost:3001/api/persons/4
+GET http://localhost:3001/api/persons/67dc56767b566ca7f0c5424f
 
 ### 
-DELETE http://localhost:3001/api/persons/1
+DELETE http://localhost:3001/api/persons/67dc73a629b7fb557fb0db00
 
 ###
 POST http://localhost:3001/api/persons/ HTTP/1.1
 content-type: application/json
 
 {
-    "name": "Bruno",
-    "number": "090-2634"
+    "name": "Arto Hellas",
+    "number": "040-123456"
 }
 
 ###
-PUT http://localhost:3001/api/persons/3 HTTP/1.1
+PUT http://localhost:3001/api/persons/67dc74109d2bb47a7b3637d1 HTTP/1.1
 content-type: application/json
 
 {
-    "name": "Dan0 Abramov",
-    "number": "080-2634",
-    "id": 3
+    "name": "Bruno",
+    "number": "040-123456"
 }

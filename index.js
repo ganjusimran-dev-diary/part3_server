@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const morgan = require("morgan");
 
@@ -5,160 +6,131 @@ const app = express();
 app.use(express.json());
 app.use(express.static("dist"));
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
+const Person = require("./models/person");
 
-let phonebook = [
-  {
-    id: "1",
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: "2",
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: "3",
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: "4",
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
+const {
+  logCallback,
+  reqBodyCallback,
+  errorHandler,
+  unknownEndpoint,
+} = require("./helpers");
 
-// Utility to generate new ID
-const generateId = () => {
-  const existingIds = phonebook?.map((n) => Number(n.id));
-  //Assuming less than 100 entries, using 1 - 9999.  ;(
-  let isUnique = false;
-  let newId = "";
-  while (!isUnique) {
-    newId = Math.floor(Math.random() * 9999) + 1;
-    if (!existingIds.includes(newId)) {
-      isUnique = true;
-    }
-  }
-  return `${newId}`;
-};
-
-const logCallback = (tokens, request, response) => {
-  return [
-    tokens.method(request, response),
-    tokens.url(request, response),
-    tokens.status(request, response),
-    tokens.res(request, response, "content-length"),
-    "-",
-    tokens["response-time"](request, response),
-    "ms",
-    tokens["req-body"](request, response),
-  ].join(" ");
-};
-
-const reqBodyCallback = (request, response) => {
-  return JSON.stringify(request?.body || {});
-};
-
-// GET ALL PEOPLE
-app.get("/api/persons", (request, response) => {
-  response.json(phonebook);
+// GET ALL PEOPLE IN PHONEBOOK
+app.get("/api/persons", (request, response, next) => {
+  Person.find({})
+    .then((persons) => {
+      response.json(persons);
+    })
+    .catch((error) => next(error));
 });
 
 // GET PHONEBOOK STATUS
-app.get("/info", (request, response) => {
-  response.send(
-    `<div><p>Phonebook has info for ${
-      phonebook?.length
-    } people</p><p>${new Date().toString()}</p></div>`
-  );
+app.get("/info", (request, response, next) => {
+  Person.find({})
+    .then((persons) => {
+      response.send(
+        `<div><p>Phonebook has info for ${
+          persons?.length || 0
+        } people</p><p>${new Date().toString()}</p></div>`
+      );
+    })
+    .catch((error) => next(error));
 });
 
 // GET PERSON BY ID
-app.get("/api/persons/:id", (request, response) => {
+app.get("/api/persons/:id", (request, response, next) => {
   const id = request.params?.id || "";
-  const person = phonebook?.find((phone) => phone?.id == id);
-  if (person) {
-    response.json(person);
-  } else {
-    response.status(404);
-    response.send("Could not find resource");
-  }
+  Person.findById(id)
+    .then((item) => {
+      if (item) {
+        response.json(item);
+      } else {
+        response.status(404);
+        response.send({ error: "Could not find resource" });
+      }
+    })
+    .catch((error) => next(error));
 });
 
 // DELETE PERSON BY ID
-app.delete("/api/persons/:id", (request, response) => {
+app.delete("/api/persons/:id", (request, response, next) => {
   const id = request.params.id;
-  phonebook = phonebook?.filter((phone) => phone?.id !== id);
-  response.status(204).end();
+  Person.findByIdAndDelete(id)
+    .then((result) => {
+      if (!result) {
+        response.status(404);
+        response.send({ error: "Could not find resource" });
+      } else {
+        response.status(204).end();
+      }
+    })
+    .catch((error) => next(error));
 });
 
-app.put("/api/persons/:id", (request, response) => {
-  const body = request.body;
-  if (!body?.name || !body?.number) {
+// UPDATE PERSON BY ID
+app.put("/api/persons/:id", (request, response, next) => {
+  const { name = "", number = "" } = request.body;
+  if (!name || !number) {
     return response.status(400).json({
       error: "The name or number is missing",
     });
   }
   const id = request.params?.id || "";
-  const phoneEntry = phonebook?.find((phone) => phone?.id == id);
-  const person = {
-    name: body.name,
-    number: body.number,
-    id,
-  };
-
-  if (phoneEntry?.name != person.name) {
-    return response.status(400).json({
-      error: "The name should match existing name",
-    });
-  }
-  phonebook = phonebook?.map((phone) => {
-    if (phone?.id !== id) return phone;
-    return person;
-  });
-  response.json(person);
+  Person.findById(id)
+    .then((person) => {
+      if (!person) {
+        return response.status(404).send({ error: "Could not find resource" });
+      }
+      person.name = name;
+      person.number = number;
+      return person
+        .save()
+        .then((updatedPerson) => {
+          response.json(updatedPerson);
+        })
+        .catch(() => {
+          next(error);
+        });
+    })
+    .catch((error) => next(error));
 });
 
 morgan.token("req-body", reqBodyCallback);
 app.use(morgan(logCallback));
 
 // POST NEW PERSON NUMBER
-app.post("/api/persons", (request, response) => {
-  const body = request.body;
-  if (!body?.name || !body?.number) {
-    return response.status(400).json({
+app.post("/api/persons", (request, response, next) => {
+  const { name = "", number = "" } = request.body;
+  if (!name || !number) {
+    return response.status(400).send({
       error: "The name or number is missing",
     });
   }
+  Person.find({ name })
+    .then((persons) => {
+      if (!!persons?.length) {
+        return response.status(400).send({
+          error: "Name must be unique",
+        });
+      }
+      const person = new Person({
+        name,
+        number,
+      });
 
-  const person = {
-    name: body.name,
-    number: body.number,
-  };
-
-  const isExistingPerson = phonebook?.find(
-    (phone) => phone?.name == person?.name
-  );
-
-  if (isExistingPerson) {
-    return response.status(400).json({
-      error: "Name must be unique",
-    });
-  }
-
-  person.id = generateId();
-  phonebook = [...phonebook, person];
-  response.json(person);
+      person
+        .save()
+        .then((savedPerson) => {
+          response.json(savedPerson);
+        })
+        .catch((error) => next(error));
+    })
+    .catch((error) => next(error));
 });
 
-const unknownEndpoint = (request, response) => {
-  response.status(404).json({ error: "No routes matching this request" });
-};
-
 app.use(unknownEndpoint);
+app.use(errorHandler);
 
 app.listen(PORT);
 console.log(`Server running on port ${PORT}`);
