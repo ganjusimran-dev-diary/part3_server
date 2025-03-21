@@ -71,27 +71,17 @@ app.delete("/api/persons/:id", (request, response, next) => {
 // UPDATE PERSON BY ID
 app.put("/api/persons/:id", (request, response, next) => {
   const { name = "", number = "" } = request.body;
-  if (!name || !number) {
-    return response.status(400).json({
-      error: "The name or number is missing",
-    });
-  }
   const id = request.params?.id || "";
-  Person.findById(id)
-    .then((person) => {
-      if (!person) {
-        return response.status(404).send({ error: "Could not find resource" });
+  Person.updateOne({ _id: id }, { name, number }, { runValidators: true })
+    .then((result) => {
+      if (result.matchedCount === 0) {
+        return response.status(404).json({ error: "Person not found" });
       }
-      person.name = name;
-      person.number = number;
-      return person
-        .save()
-        .then((updatedPerson) => {
-          response.json(updatedPerson);
-        })
-        .catch(() => {
-          next(error);
-        });
+
+      if (result.modifiedCount === 0) {
+        return response.json({ message: "No changes made" });
+      }
+      response.json({ message: `${name} updated successfully` });
     })
     .catch((error) => next(error));
 });
@@ -102,11 +92,6 @@ app.use(morgan(logCallback));
 // POST NEW PERSON NUMBER
 app.post("/api/persons", (request, response, next) => {
   const { name = "", number = "" } = request.body;
-  if (!name || !number) {
-    return response.status(400).send({
-      error: "The name or number is missing",
-    });
-  }
   Person.find({ name })
     .then((persons) => {
       if (!!persons?.length) {
