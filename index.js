@@ -94,7 +94,7 @@ app.post("/api/persons", (request, response, next) => {
   const { name = "", number = "" } = request.body;
   Person.find({ name })
     .then((persons) => {
-      if (!!persons?.length) {
+      if (persons?.length) {
         return response.status(400).send({
           error: "Name must be unique",
         });

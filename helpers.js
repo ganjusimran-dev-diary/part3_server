@@ -26,7 +26,7 @@ const logCallback = (tokens, request, response) => {
   ].join(" ");
 };
 
-const reqBodyCallback = (request, response) => {
+const reqBodyCallback = (request) => {
   return JSON.stringify(request?.body || {});
 };
 
@@ -36,11 +36,10 @@ const errorHandler = (error, request, response, next) => {
   } else if (error.name === "ValidationError") {
     return response.status(400).json({ error: error.message });
   }
-  response.status(500).json({ error: error });
+  next(error);
 };
 
 const unknownEndpoint = (request, response) => {
-  console.log("kjdhkjdhfkjdshfkjdshfkjhdskj728");
   response.status(404).json({ error: "No routes matching this request" });
 };
 
